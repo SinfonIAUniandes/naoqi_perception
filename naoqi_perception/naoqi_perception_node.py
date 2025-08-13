@@ -61,6 +61,7 @@ class NaoqiPerceptionNode(Node):
             if request.mode == "stop":
                 self.get_logger().info("Request to stop tracker.")
                 self.al_motion.setAngles(["HeadPitch", "HeadYaw"], [0.0, 0.0], 0.2) # Move head to default
+                self.al_tracker.setMaximumDistanceDetection(0.1)
                 self.al_tracker.setEffector("None")
                 self.al_tracker.stopTracker()
                 self.al_tracker.unregisterAllTargets()
@@ -75,6 +76,7 @@ class NaoqiPerceptionNode(Node):
                 self.al_tracker.registerTarget(targetName, faceWidth)
                 self.al_tracker.setRelativePosition([0.3, 0.0, 0.0,
                                                         0.1, 0.1, 0.3])
+                self.al_tracker.setMaximumDistanceDetection(3.5)
                 self.al_tracker.setMode("Head")
                 self.al_tracker.track(targetName)
                 self.al_tracker.initialize()
