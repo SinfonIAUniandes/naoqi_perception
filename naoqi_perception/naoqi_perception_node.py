@@ -3,6 +3,7 @@ from rclpy.node import Node
 import qi
 import argparse
 import sys
+import time
 
 from naoqi_utilities_msgs.srv import PointAt, SetTrackerMode
 
@@ -21,6 +22,7 @@ class NaoqiPerceptionNode(Node):
         try:
             self.al_tracker = session.service("ALTracker")
             self.al_motion = session.service("ALMotion") # Needed for some tracker operations
+            self.al_basic_awareness = session.service("ALBasicAwareness")
             self.get_logger().info("NAOqi service clients obtained successfully.")
         except Exception as e:
             self.get_logger().error(f"Could not connect to NAOqi services: {e}")
@@ -55,19 +57,27 @@ class NaoqiPerceptionNode(Node):
     def set_tracker_mode_callback(self, request, response):
         """
         Callback to set the tracker mode.
-        Modes: "stop", "start_head", "start_move"
+        Modes: "stop", "start_head", "start_move", "start_body_rotation"
         """
         try:
             if request.mode == "stop":
+                self.al_basic_awareness.pauseAwareness()
+                self.al_basic_awareness.stopAwareness()
+                time.sleep(1)
                 self.get_logger().info("Request to stop tracker.")
                 self.al_motion.setAngles(["HeadPitch", "HeadYaw"], [0.0, 0.0], 0.2) # Move head to default
+                time.sleep(1)
                 self.al_tracker.setMaximumDistanceDetection(0.1)
                 self.al_tracker.setEffector("None")
                 self.al_tracker.stopTracker()
+                time.sleep(1)
                 self.al_tracker.unregisterAllTargets()
                 response.success = True
                 response.message = "Tracker stopped successfully."
             elif request.mode == "start_head":
+                self.al_basic_awareness.pauseAwareness()
+                self.al_basic_awareness.stopAwareness()
+                time.sleep(1)
                 self.get_logger().info("Request to start tracker for 'Face' (head only).")
                 self.al_motion.setAngles(["HeadPitch", "HeadYaw"], [0.0, 0.0], 0.2) # Move head to default
                 self.al_tracker.setEffector("None")
@@ -82,7 +92,24 @@ class NaoqiPerceptionNode(Node):
                 self.al_tracker.initialize()
                 response.success = True
                 response.message = "Tracker started for 'Face'."
+            elif request.mode == "start_body_rotation":
+                self.get_logger().info("Request to start tracking of sound and faces rotating")
+                self.al_basic_awareness.stopAwareness()
+                time.sleep(1)
+                self.al_basic_awareness.startAwareness()
+                time.sleep(1)
+                self.al_basic_awareness.pauseAwareness()
+                time.sleep(1)
+                self.al_basic_awareness.resumeAwareness()
+                time.sleep(1)
+                self.al_basic_awareness.setTrackingMode("BodyRotation")
+                response.success = True
+                response.message = "Face tracking with movement enabled."
+                self.get_logger().info(response.message)
             elif request.mode == "start_move":
+                self.al_basic_awareness.pauseAwareness()
+                self.al_basic_awareness.stopAwareness()
+                time.sleep(1)
                 self.get_logger().info("Request to start face tracking (with movement).")
                 self.al_motion.setAngles(["HeadPitch", "HeadYaw"], [0.0, 0.0], 0.2)
                 self.al_tracker.setMaximumDistanceDetection(3.5)
